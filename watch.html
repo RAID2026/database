@@ -72,6 +72,21 @@
     <button class="btn" onclick="sendCommand('play radio')">📻 PLAY RADIO</button>
     <button class="btn btn-stop" onclick="sendCommand('stop')">🛑 STOP AUDIO</button>
 
+    <!-- Add under your buttons in watch.html -->
+<input type="text" id="voice-input" placeholder="🎤 Tap to dictate command..." 
+       style="width: 100%; padding: 10px; margin-top: 10px; background: #1a1b26; border: 1.5px solid #a5b4fc; color: #fff; border-radius: 8px; box-sizing: border-box; text-align: center;"
+       onchange="sendCustom(this)">
+
+<script>
+  function sendCustom(inputEl) {
+      const command = inputEl.value.trim();
+      if (command) {
+          sendCommand(command);
+          inputEl.value = ""; // Clear after sending
+      }
+  }
+</script>
+
     <div id="status">CONNECTED</div>
 
     <script>
