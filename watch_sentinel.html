@@ -358,33 +358,36 @@
             }
         });
         function sendCommand(cmdText, silent = false) {
-            if (!phoneIp) return;
             const statusDiv = document.getElementById('status');
             if (!silent) {
                 statusDiv.innerText = "SENDING...";
                 statusDiv.style.color = "#00f3ff";
             }
             
-            startPolling();
-            fetch(phoneIp + '/api/command?cmd=' + encodeURIComponent(cmdText))
-                .then(r => r.json())
-                .then(data => {
-                    if (!silent) {
-                        if (data.status === 'success') {
-                            statusDiv.innerText = "EXECUTED: " + cmdText.toUpperCase();
-                            statusDiv.style.color = "#10b981";
-                        } else {
-                            statusDiv.innerText = "FAILED";
-                            statusDiv.style.color = "#ef4444";
-                        }
-                    }
+            // Route the command through your Firebase Database!
+            // This instantly triggers the phone's background ChatNotificationService listener.
+            fetch('https://sensorsconnect-d1f93-default-rtdb.firebaseio.com/sentinel_watch.json', {
+                method: 'POST',
+                body: JSON.stringify({
+                    sender: "AppleWatch_Web",
+                    message: cmdText,
+                    timestamp: Date.now()
                 })
-                .catch(err => {
-                    if (!silent) {
-                        statusDiv.innerText = "OFFLINE";
-                        statusDiv.style.color = "#ef4444";
-                    }
-                });
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (!silent) {
+                    statusDiv.innerText = "SENT: " + cmdText.toUpperCase();
+                    statusDiv.style.color = "#10b981";
+                }
+            })
+            .catch(err => {
+                if (!silent) {
+                    statusDiv.innerText = "OFFLINE";
+                    statusDiv.style.color = "#ef4444";
+                }
+                console.error("Firebase write error:", err);
+            });
         }
         function toggleNoteMode() {
             isNoteMode = !isNoteMode;
