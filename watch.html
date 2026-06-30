@@ -54,7 +54,7 @@
                 document.getElementById('error-msg').innerText = "No 'key' parameter found in URL!\nExample: ?key=1a2b3c4d";
                 return;
             }
-            fetch('https://kvdb.io/j8F2kL9w_sentinel/' + key)
+            fetch('https://kvdb.io/UVMC6HW7hxxx7APWj9bUbj/' + key)
                 .then(response => {
                     if (!response.ok) throw new Error("Status " + response.status);
                     return response.text();
@@ -81,3 +81,4 @@
     <div id="error-msg"></div>
 </body>
 </html>
+
