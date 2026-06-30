@@ -297,8 +297,8 @@
             document.getElementById('status').innerText = "MISSING KEY IN URL";
         }
 
-        // Request iOS/watchOS motion permission on first tap
-        document.addEventListener('touchstart', function() {
+        // Request iOS/watchOS motion permission on first tap (handles both touch and click)
+        function triggerPermission() {
             if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
                 DeviceMotionEvent.requestPermission()
                     .then(state => {
@@ -308,7 +308,9 @@
                     })
                     .catch(err => console.error(err));
             }
-        }, { once: true });
+        }
+        document.addEventListener('touchstart', triggerPermission, { once: true });
+        document.addEventListener('click', triggerPermission, { once: true });
 
         // Wrist-shake gesture detection via Accelerometer
         let lastUpdate = 0;
