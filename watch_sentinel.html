@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Sentinel Watch Remote</title>
+    <style>
+        html, body {
+            background-color: #080710;
+            color: #00f3ff;
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            text-align: center;
+            padding: 0;
+            margin: 0;
+            width: 100vw;
+            box-sizing: border-box;
+            overflow-x: hidden;
+        }
+        .page-wrap {
+            width: 100%;
+            padding: 8px;
+            box-sizing: border-box;
+        }
+        h2 {
+            font-size: 18px;
+            margin: 6px 0 12px 0;
+            color: #c084fc;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 800;
+        }
+        .tab-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            border-bottom: 1.5px solid rgba(192, 132, 252, 0.3);
+            padding-bottom: 6px;
+        }
+        .tab-btn {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: #64748b;
+            font-size: 18px;
+            font-weight: bold;
+            padding: 8px 0;
+            text-align: center;
+            text-transform: uppercase;
+            outline: none;
+            transition: all 0.2s ease;
+        }
+        .tab-btn.active {
+            color: #00f3ff;
+            border-bottom: 3px solid #00f3ff;
+        }
+        .tab-content {
+            margin-top: 10px;
+        }
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+        .btn {
+            background: rgba(0, 243, 255, 0.05);
+            border: 2px solid #00f3ff;
+            color: #00f3ff;
+            padding: 16px 10px;
+            margin: 4px 0;
+            width: 100%;
+            border-radius: 18px;
+            font-weight: bold;
+            font-size: 16px;
+            box-sizing: border-box;
+            outline: none;
+            transition: transform 0.08s ease, background 0.08s ease, box-shadow 0.08s ease;
+        }
+        .btn.btn-pressed {
+            transform: scale(0.92);
+            background: rgba(0, 243, 255, 0.25) !important;
+            box-shadow: 0 0 18px rgba(0, 243, 255, 0.7) !important;
+        }
+        .btn-stop.btn-pressed {
+            background: rgba(239, 68, 68, 0.35) !important;
+            box-shadow: 0 0 18px rgba(239, 68, 68, 0.7) !important;
+        }
+        .btn-gate.btn-pressed {
+            background: rgba(16, 185, 129, 0.35) !important;
+            box-shadow: 0 0 18px rgba(16, 185, 129, 0.7) !important;
+        }
+        .btn:active {
+            background: #00f3ff;
+            color: #080710;
+            transform: scale(0.95);
+        }
+        .btn-gate {
+            border-color: #10b981;
+            color: #10b981;
+            background: rgba(16, 185, 129, 0.05);
+        }
+        .btn-gate:active {
+            background: #10b981;
+            color: #080710;
+        }
+        .btn-stop {
+            border-color: #ef4444;
+            color: #ef4444;
+            background: rgba(239, 68, 68, 0.05);
+        }
+        .btn-stop:active {
+            background: #ef4444;
+            color: #080710;
+        }
+        .btn-note-active {
+            background: rgba(168, 85, 247, 0.2) !important;
+            border-color: #a855f7 !important;
+            color: #a855f7 !important;
+            box-shadow: 0 0 12px rgba(168, 85, 247, 0.5);
+        }
+        .select-container {
+            position: relative;
+            width: 100%;
+            margin: 6px 0;
+        }
+        .select-container::after {
+            content: "▼";
+            font-size: 11px;
+            color: #a5b4fc;
+            position: absolute;
+            right: 18px;
+            top: 50%;
+            transform: translateY(-50%);
+            pointer-events: none;
+        }
+        .select-box {
+            background: rgba(0, 243, 255, 0.05);
+            border: 2px solid #a5b4fc;
+            color: #a5b4fc;
+            padding: 16px 36px 16px 16px;
+            margin: 0;
+            width: 100%;
+            border-radius: 18px;
+            font-weight: bold;
+            font-size: 16px;
+            outline: none;
+            text-align: center;
+            text-align-last: center;
+            box-sizing: border-box;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+        .select-box:active {
+            background: rgba(165, 180, 252, 0.2);
+        }
+        .mic-container {
+            margin-top: 18px;
+            padding: 14px;
+            background: rgba(0, 243, 255, 0.03);
+            border: 2px dashed #00f3ff;
+            border-radius: 18px;
+            box-shadow: 0 0 10px rgba(0, 243, 255, 0.1);
+        }
+        .input-box {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: #fff;
+            font-size: 16px;
+            font-weight: bold;
+            outline: none;
+            text-align: left;
+            padding: 4px;
+            width: 0;
+            min-width: 0;
+        }
+        .input-box::placeholder {
+            color: #64748b;
+            font-size: 15px;
+        }
+        #status {
+            font-size: 11px;
+            color: #64748b;
+            margin-top: 15px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="page-wrap">
+        <h2>Sentinel Watch v2</h2>
+        
+        <!-- Map Card -->
+        <div id="map-card" style="display: none; margin-bottom: 12px; background: rgba(0, 243, 255, 0.05); border: 2px solid #00f3ff; border-radius: 18px; padding: 8px; box-sizing: border-box;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; padding: 0 4px;">
+                <span id="map-title" style="font-size: 14px; font-weight: bold; color: #c084fc; letter-spacing: 0.5px;">🗺️ MAP RESULT</span>
+                <button onclick="closeMap()" style="background: none; border: none; color: #ef4444; font-size: 18px; font-weight: bold; cursor: pointer; padding: 0 4px;">✕</button>
+            </div>
+            <img id="map-img" src="" style="width: 100%; border-radius: 12px; display: block; border: 1.5px solid rgba(0,243,255,0.3);">
+            <div id="map-zoom-controls" style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 6px;">
+                <button class="btn" onclick="sendCommand('zoom out')" style="margin: 0; padding: 10px; font-size: 14px; border-radius: 12px;">➖ OUT</button>
+                <button class="btn" onclick="sendCommand('zoom in')" style="margin: 0; padding: 10px; font-size: 14px; border-radius: 12px;">➕ IN</button>
+            </div>
+        </div>
+        
+        <div class="tab-header">
+            <button class="tab-btn active" onclick="openTab(event, 'tab-ir')">IR</button>
+            <button class="tab-btn" onclick="openTab(event, 'tab-radio')">Radio</button>
+            <button class="tab-btn" onclick="openTab(event, 'tab-gate')">Gate</button>
+        </div>
+
+        <!-- Tab 1: IR Remote -->
+        <div id="tab-ir" class="tab-content">
+            <div class="grid-2">
+                <button class="btn btn-stop" onclick="sendCommand('blast power')">🔌 POWER</button>
+                <button class="btn" onclick="sendCommand('blast mute')">🔇 MUTE</button>
+                <button class="btn" onclick="sendCommand('blast volume_up')">🔊 VOL +</button>
+                <button class="btn" onclick="sendCommand('blast volume_down')">🔉 VOL -</button>
+                <button class="btn" onclick="sendCommand('blast play')">⏯️ PLAY</button>
+                <button class="btn btn-stop" onclick="sendCommand('stop')">⏹️ STOP</button>
+            </div>
+        </div>
+
+        <!-- Tab 2: Radio Control -->
+        <div id="tab-radio" class="tab-content" style="display:none;">
+            <button id="play-btn" class="btn" onclick="playRadio()" style="margin-bottom: 4px;">📻 PLAY RADIO</button>
+            <button class="btn btn-stop" onclick="sendCommand('stop')" style="margin-bottom: 8px;">⏹️ STOP RADIO</button>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1.2fr 1fr; gap: 6px; margin-bottom: 8px;">
+                <button class="btn" onclick="sendCommand('volume down')">🔉 VOL-</button>
+                <button class="btn" onclick="sendCommand('mute')">🔇 MUTE</button>
+                <button class="btn" onclick="sendCommand('volume up')">🔊 VOL+</button>
+            </div>
+            
+            <div class="select-container">
+                <select id="fav-select" onchange="playFavorite(this)" class="select-box">
+                    <option value="" disabled selected>⭐ Select Favorite...</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Tab 3: Gate Controller -->
+        <div id="tab-gate" class="tab-content" style="display:none;">
+            <div class="grid-2">
+                <button class="btn btn-gate" onclick="sendCommand('open gate')">🔓 OPEN</button>
+                <button class="btn btn-gate" onclick="sendCommand('close gate')">🔒 CLOSE</button>
+            </div>
+            <button class="btn" onclick="sendCommand('pause gate')">⏸️ PAUSE GATE</button>
+            <div class="grid-2">
+                <button class="btn" onclick="sendCommand('sync open')" style="font-size:11px;">🔄 SYNC OPEN</button>
+                <button class="btn" onclick="sendCommand('sync closed')" style="font-size:11px;">🔄 SYNC CLOSE</button>
+            </div>
+        </div>
+
+        <!-- Dictation Microphone Input & Stop Assistant -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 18px;">
+            <div class="mic-container" onclick="focusMicInput()" style="margin-top: 0; display: flex; align-items: center; justify-content: center; gap: 10px; padding: 16px 10px; cursor: pointer;">
+                <span style="font-size: 24px;">🎤</span>
+                <input type="text" class="input-box" id="custom-cmd" placeholder="Dictate..." onchange="sendCustom(this)">
+            </div>
+            <button id="note-btn" class="btn" onclick="toggleNoteMode()" style="margin: 0; font-size: 20px; padding: 16px 10px;">📝</button>
+            <button class="btn btn-stop" onclick="sendCommand('stop assistant')" style="margin: 0; font-size: 24px; padding: 16px 10px;">🛑</button>
+        </div>
+
+        <div id="status">LOCATING PHONE...</div>
+    </div>
+
+    <script>
+        let phoneIp = '';
+        let selectedStationName = 'Radio Paradise';
+        let isNoteMode = false;
+        let currentMapId = '';
+        let pollInterval = null;
+        let pollTimeout = null;
+
+        // Fetch Phone IP from Firebase
+        const urlParams = new URLSearchParams(window.location.search);
+        const key = urlParams.get('key');
+        
+        if (key) {
+            fetch('https://sensorsconnect-d1f93-default-rtdb.firebaseio.com/server_ip/' + key + '.json')
+                .then(r => r.json())
+                .then(ip => {
+                    if (ip && ip.startsWith('http')) {
+                        phoneIp = ip;
+                        document.getElementById('status').innerText = "CONNECTED";
+                        loadFavorites();
+                    } else {
+                        document.getElementById('status').innerText = "INVALID PHONE IP";
+                    }
+                })
+                .catch(err => {
+                    document.getElementById('status').innerText = "ERROR FINDING PHONE";
+                    console.error(err);
+                });
+        } else {
+            document.getElementById('status').innerText = "MISSING KEY IN URL";
+        }
+
+        // Request iOS/watchOS motion permission on first tap
+        document.addEventListener('touchstart', function() {
+            if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+                DeviceMotionEvent.requestPermission()
+                    .then(state => {
+                        if (state === 'granted') {
+                            document.getElementById('status').innerText = "CONNECTED (GESTURES OK)";
+                        }
+                    })
+                    .catch(err => console.error(err));
+            }
+        }, { once: true });
+
+        // Wrist-shake gesture detection via Accelerometer
+        let lastUpdate = 0;
+        let lastX = 0, lastY = 0, lastZ = 0;
+        let shakeTimeout = null;
+
+        window.addEventListener('devicemotion', function(event) {
+            let acc = event.accelerationIncludingGravity;
+            if (!acc) return;
+            
+            let curTime = Date.now();
+            if ((curTime - lastUpdate) > 100) {
+                let diffTime = curTime - lastUpdate;
+                lastUpdate = curTime;
+                
+                let x = acc.x || 0;
+                let y = acc.y || 0;
+                let z = acc.z || 0;
+                
+                let speed = Math.abs(x + y + z - lastX - lastY - lastZ) / diffTime * 10000;
+                
+                if (speed > 850) { // Shake threshold
+                    if (!shakeTimeout) {
+                        // Vibrate the watch (Haptic feedback)
+                        if (navigator.vibrate) {
+                            navigator.vibrate(120);
+                        }
+                        
+                        // Toggle Note Mode and Focus the Mic input
+                        toggleNoteMode();
+                        focusMicInput();
+                        
+                        const statusDiv = document.getElementById('status');
+                        statusDiv.innerText = "SHAKE: NOTE MODE ACTIVE";
+                        statusDiv.style.color = "#a855f7";
+                        
+                        // Prevent multiple triggers in 2 seconds
+                        shakeTimeout = setTimeout(function() {
+                            shakeTimeout = null;
+                            statusDiv.innerText = "CONNECTED";
+                            statusDiv.style.color = "#64748b";
+                        }, 2000);
+                    }
+                }
+                
+                lastX = x;
+                lastY = y;
+                lastZ = z;
+            }
+        });
+
+        function sendCommand(cmdText, silent = false) {
+            if (!phoneIp) return;
+            const statusDiv = document.getElementById('status');
+            if (!silent) {
+                statusDiv.innerText = "SENDING...";
+                statusDiv.style.color = "#00f3ff";
+            }
+            
+            startPolling();
+            fetch(phoneIp + '/api/command?cmd=' + encodeURIComponent(cmdText))
+                .then(r => r.json())
+                .then(data => {
+                    if (!silent) {
+                        if (data.status === 'success') {
+                            statusDiv.innerText = "EXECUTED: " + cmdText.toUpperCase();
+                            statusDiv.style.color = "#10b981";
+                        } else {
+                            statusDiv.innerText = "FAILED";
+                            statusDiv.style.color = "#ef4444";
+                        }
+                    }
+                })
+                .catch(err => {
+                    if (!silent) {
+                        statusDiv.innerText = "OFFLINE";
+                        statusDiv.style.color = "#ef4444";
+                    }
+                });
+        }
+
+        function toggleNoteMode() {
+            isNoteMode = !isNoteMode;
+            var noteBtn = document.getElementById('note-btn');
+            var inputEl = document.getElementById('custom-cmd');
+            if (isNoteMode) {
+                if (noteBtn) noteBtn.classList.add('btn-note-active');
+                if (inputEl) inputEl.placeholder = 'Note Mode...';
+            } else {
+                if (noteBtn) noteBtn.classList.remove('btn-note-active');
+                if (inputEl) inputEl.placeholder = 'Dictate...';
+            }
+        }
+        
+        function openTab(evt, tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            document.getElementById(tabId).style.display = 'block';
+            evt.currentTarget.classList.add('active');
+        }
+
+        function focusMicInput() {
+            document.getElementById('custom-cmd').focus();
+        }
+
+        function sendCustom(inputEl) {
+            const val = inputEl.value.trim();
+            if (val) {
+                if (isNoteMode) {
+                    sendCommand('save note: ' + val);
+                    isNoteMode = false;
+                    var noteBtn = document.getElementById('note-btn');
+                    if (noteBtn) noteBtn.classList.remove('btn-note-active');
+                    inputEl.placeholder = 'Dictate...';
+                } else {
+                    sendCommand(val);
+                }
+                inputEl.value = '';
+            }
+        }
+
+        function playRadio() {
+            sendCommand('play radio ' + selectedStationName);
+        }
+
+        function playFavorite(selectEl) {
+            const stationName = selectEl.value;
+            if (stationName) {
+                selectedStationName = stationName;
+                document.getElementById('play-btn').innerText = "📻 PLAY: " + stationName.toUpperCase();
+                sendCommand('play radio ' + stationName);
+                setTimeout(() => { selectEl.value = ""; }, 500);
+            }
+        }
+
+        function loadFavorites() {
+            if (!phoneIp) return;
+            const selectEl = document.getElementById('fav-select');
+            selectEl.innerHTML = '<option value="" disabled selected>Loading...</option>';
+            
+            fetch(phoneIp + '/api/favorites')
+                .then(r => r.json())
+                .then(data => {
+                    selectEl.innerHTML = '<option value="" disabled selected>⭐ Select Favorite...</option>';
+                    if (!data || data.length === 0) {
+                        selectEl.innerHTML = '<option value="" disabled>No favorites on phone</option>';
+                        return;
+                    }
+                    data.forEach(station => {
+                        const opt = document.createElement('option');
+                        opt.value = station.name;
+                        opt.innerText = station.name;
+                        selectEl.appendChild(opt);
+                    });
+                })
+                .catch(err => {
+                    selectEl.innerHTML = '<option value="" disabled>Load error</option>';
+                });
+        }
+
+        function startPolling() {
+            if (pollInterval) clearInterval(pollInterval);
+            if (pollTimeout) clearTimeout(pollTimeout);
+
+            pollInterval = setInterval(checkMapStatus, 1500);
+
+            pollTimeout = setTimeout(function() {
+                if (pollInterval) {
+                    clearInterval(pollInterval);
+                    pollInterval = null;
+                }
+            }, 15000);
+        }
+
+        function checkMapStatus() {
+            if (!phoneIp) return;
+            fetch(phoneIp + '/api/map-status')
+                .then(r => r.json())
+                .then(data => {
+                    if (data.mapId && data.mapId !== currentMapId) {
+                        currentMapId = data.mapId;
+                        document.getElementById('map-img').src = phoneIp + '/api/map?t=' + Date.now();
+                        document.getElementById('map-card').style.display = 'block';
+                        
+                        if (data.title) {
+                            document.getElementById('map-title').innerText = data.title.toUpperCase();
+                            if (data.title.toUpperCase().indexOf("PICTURE") !== -1) {
+                                document.getElementById('map-zoom-controls').style.display = 'none';
+                            } else {
+                                document.getElementById('map-zoom-controls').style.display = 'grid';
+                            }
+                        }
+                        
+                        if (pollInterval) {
+                            clearInterval(pollInterval);
+                            pollInterval = null;
+                        }
+                    }
+                })
+                .catch(e => {});
+        }
+
+        function closeMap() {
+            document.getElementById('map-card').style.display = 'none';
+        }
+    </script>
+</body>
+</html>
