@@ -257,41 +257,23 @@
             <button id="note-btn" class="btn" onclick="toggleNoteMode()" style="margin: 0; font-size: 20px; padding: 16px 10px;">📝</button>
             <button class="btn btn-stop" onclick="sendCommand('stop assistant')" style="margin: 0; font-size: 24px; padding: 16px 10px;">🛑</button>
         </div>
-        <div id="status">LOCATING PHONE...</div>
+        <div id="status">CONNECTING...</div>
     </div>
     <script>
-        let phoneIp = '';
         let selectedStationName = 'Radio Paradise';
         let isNoteMode = false;
         let currentMapId = '';
         let pollInterval = null;
         let pollTimeout = null;
-        // Fetch Phone IP from Firebase
+        // Fetch Phone Key from URL
         const urlParams = new URLSearchParams(window.location.search);
         const key = urlParams.get('key');
         
         if (key) {
-            fetch('https://sensorsconnect-d1f93-default-rtdb.firebaseio.com/server_ip/' + key + '.json')
-                .then(r => r.json())
-                .then(ip => {
-                    if (ip && ip.startsWith('http')) {
-                        phoneIp = ip;
-                        
-                        // DEBUG INFO: Check what the watch supports
-                        let motionSupport = (typeof DeviceMotionEvent !== 'undefined') ? 'Yes' : 'No';
-                        let permSupport = (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') ? 'Yes' : 'No';
-                        
-                        document.getElementById('status').innerText = "CONNECTED | Motion: " + motionSupport + " | PermReq: " + permSupport;
-                        
-                        loadFavorites();
-                    } else {
-                        document.getElementById('status').innerText = "INVALID PHONE IP";
-                    }
-                })
-                .catch(err => {
-                    document.getElementById('status').innerText = "ERROR FINDING PHONE";
-                    console.error(err);
-                });
+            document.getElementById('status').innerText = "CONNECTED";
+            loadFavorites();
+            // Start listening to map updates in real-time
+            startPolling();
         } else {
             document.getElementById('status').innerText = "MISSING KEY IN URL";
         }
@@ -358,14 +340,14 @@
             }
         });
         function sendCommand(cmdText, silent = false) {
+            if (!key) return;
             const statusDiv = document.getElementById('status');
             if (!silent) {
                 statusDiv.innerText = "SENDING...";
                 statusDiv.style.color = "#00f3ff";
             }
             
-            // Route the command through your Firebase Database!
-            // This instantly triggers the phone's background ChatNotificationService listener.
+            // Route the command securely through Firebase (HTTPS)
             fetch('https://sensorsconnect-d1f93-default-rtdb.firebaseio.com/sentinel_watch.json', {
                 method: 'POST',
                 body: JSON.stringify({
@@ -380,6 +362,8 @@
                     statusDiv.innerText = "SENT: " + cmdText.toUpperCase();
                     statusDiv.style.color = "#10b981";
                 }
+                // Trigger a quick check of the map status
+                checkMapStatus();
             })
             .catch(err => {
                 if (!silent) {
@@ -439,13 +423,14 @@
             }
         }
         function loadFavorites() {
-            if (!phoneIp) return;
             const selectEl = document.getElementById('fav-select');
             selectEl.innerHTML = '<option value="" disabled selected>Loading...</option>';
             
-            fetch(phoneIp + '/api/favorites')
+            // Read favorites securely from Firebase (HTTPS)
+            fetch('https://sensorsconnect-d1f93-default-rtdb.firebaseio.com/radio_favorites.json')
                 .then(r => r.json())
-                .then(data => {
+                .then(dataStr => {
+                    const data = JSON.parse(dataStr || '[]');
                     selectEl.innerHTML = '<option value="" disabled selected>⭐ Select Favorite...</option>';
                     if (!data || data.length === 0) {
                         selectEl.innerHTML = '<option value="" disabled>No favorites on phone</option>';
@@ -460,12 +445,13 @@
                 })
                 .catch(err => {
                     selectEl.innerHTML = '<option value="" disabled>Load error</option>';
+                    console.error("Failed to load favorites from Firebase:", err);
                 });
         }
         function startPolling() {
             if (pollInterval) clearInterval(pollInterval);
             if (pollTimeout) clearTimeout(pollTimeout);
-            pollInterval = setInterval(checkMapStatus, 1500);
+            pollInterval = setInterval(checkMapStatus, 2000);
             pollTimeout = setTimeout(function() {
                 if (pollInterval) {
                     clearInterval(pollInterval);
@@ -474,13 +460,13 @@
             }, 15000);
         }
         function checkMapStatus() {
-            if (!phoneIp) return;
-            fetch(phoneIp + '/api/map-status')
+            // Read map/picture status securely from Firebase (HTTPS)
+            fetch('https://sensorsconnect-d1f93-default-rtdb.firebaseio.com/map_status.json')
                 .then(r => r.json())
                 .then(data => {
-                    if (data.mapId && data.mapId !== currentMapId) {
+                    if (data && data.mapId && data.mapId !== currentMapId) {
                         currentMapId = data.mapId;
-                        document.getElementById('map-img').src = phoneIp + '/api/map?t=' + Date.now();
+                        document.getElementById('map-img').src = data.image; // Base64 Data URL!
                         document.getElementById('map-card').style.display = 'block';
                         
                         if (data.title) {
