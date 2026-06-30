@@ -272,11 +272,43 @@
         if (key) {
             document.getElementById('status').innerText = "CONNECTED";
             loadFavorites();
-            // Start listening to map updates in real-time
-            startPolling();
+            // Do a single check on load to see if a map is already active
+            checkMapStatus();
         } else {
             document.getElementById('status').innerText = "MISSING KEY IN URL";
         }
+        // Setup visual and haptic feedback on all buttons
+        function setupButtonFeedback() {
+            document.querySelectorAll('.btn').forEach(btn => {
+                // Touch Start (Watch/Phone)
+                btn.addEventListener('touchstart', () => {
+                    btn.classList.add('btn-pressed');
+                    if (navigator.vibrate) {
+                        navigator.vibrate(15); // Short, premium haptic tap
+                    }
+                });
+                // Touch End
+                btn.addEventListener('touchend', () => {
+                    btn.classList.remove('btn-pressed');
+                });
+                btn.addEventListener('touchcancel', () => {
+                    btn.classList.remove('btn-pressed');
+                });
+                // Mouse Fallback (Laptop/Desktop testing)
+                btn.addEventListener('mousedown', () => {
+                    btn.classList.add('btn-pressed');
+                    if (navigator.vibrate) {
+                        navigator.vibrate(15);
+                    }
+                });
+                btn.addEventListener('mouseup', () => {
+                    btn.classList.remove('btn-pressed');
+                });
+            });
+        }
+        
+        // Initialize button feedback
+        setupButtonFeedback();
         // Request iOS/watchOS motion permission on first tap
         function triggerPermission() {
             if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
@@ -347,6 +379,8 @@
                 statusDiv.style.color = "#00f3ff";
             }
             
+            // Start battery-optimized smart polling
+            startPolling();
             // Route the command securely through Firebase (HTTPS)
             fetch('https://sensorsconnect-d1f93-default-rtdb.firebaseio.com/sentinel_watch.json', {
                 method: 'POST',
@@ -362,7 +396,7 @@
                     statusDiv.innerText = "SENT: " + cmdText.toUpperCase();
                     statusDiv.style.color = "#10b981";
                 }
-                // Trigger a quick check of the map status
+                // Instantly check once
                 checkMapStatus();
             })
             .catch(err => {
@@ -451,13 +485,22 @@
         function startPolling() {
             if (pollInterval) clearInterval(pollInterval);
             if (pollTimeout) clearTimeout(pollTimeout);
+            // Poll every 2 seconds
             pollInterval = setInterval(checkMapStatus, 2000);
+            // Safety timeout: stop polling after 20 seconds to save battery
             pollTimeout = setTimeout(function() {
-                if (pollInterval) {
-                    clearInterval(pollInterval);
-                    pollInterval = null;
-                }
-            }, 15000);
+                stopPolling();
+            }, 20000);
+        }
+        function stopPolling() {
+            if (pollInterval) {
+                clearInterval(pollInterval);
+                pollInterval = null;
+            }
+            if (pollTimeout) {
+                clearTimeout(pollTimeout);
+                pollTimeout = null;
+            }
         }
         function checkMapStatus() {
             // Read map/picture status securely from Firebase (HTTPS)
@@ -477,11 +520,8 @@
                                 document.getElementById('map-zoom-controls').style.display = 'grid';
                             }
                         }
-                        
-                        if (pollInterval) {
-                            clearInterval(pollInterval);
-                            pollInterval = null;
-                        }
+                        // SUCCESS: We received the new image, stop polling immediately to save battery!
+                        stopPolling();
                     }
                 })
                 .catch(e => {});
@@ -492,3 +532,4 @@
     </script>
 </body>
 </html>
+
