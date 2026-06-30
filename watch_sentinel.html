@@ -208,7 +208,6 @@
             <button class="tab-btn" onclick="openTab(event, 'tab-radio')">Radio</button>
             <button class="tab-btn" onclick="openTab(event, 'tab-gate')">Gate</button>
         </div>
-
         <!-- Tab 1: IR Remote -->
         <div id="tab-ir" class="tab-content">
             <div class="grid-2">
@@ -220,7 +219,6 @@
                 <button class="btn btn-stop" onclick="sendCommand('stop')">⏹️ STOP</button>
             </div>
         </div>
-
         <!-- Tab 2: Radio Control -->
         <div id="tab-radio" class="tab-content" style="display:none;">
             <button id="play-btn" class="btn" onclick="playRadio()" style="margin-bottom: 4px;">📻 PLAY RADIO</button>
@@ -238,7 +236,6 @@
                 </select>
             </div>
         </div>
-
         <!-- Tab 3: Gate Controller -->
         <div id="tab-gate" class="tab-content" style="display:none;">
             <div class="grid-2">
@@ -251,7 +248,6 @@
                 <button class="btn" onclick="sendCommand('sync closed')" style="font-size:11px;">🔄 SYNC CLOSE</button>
             </div>
         </div>
-
         <!-- Dictation Microphone Input & Stop Assistant -->
         <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 18px;">
             <div class="mic-container" onclick="focusMicInput()" style="margin-top: 0; display: flex; align-items: center; justify-content: center; gap: 10px; padding: 16px 10px; cursor: pointer;">
@@ -261,10 +257,8 @@
             <button id="note-btn" class="btn" onclick="toggleNoteMode()" style="margin: 0; font-size: 20px; padding: 16px 10px;">📝</button>
             <button class="btn btn-stop" onclick="sendCommand('stop assistant')" style="margin: 0; font-size: 24px; padding: 16px 10px;">🛑</button>
         </div>
-
         <div id="status">LOCATING PHONE...</div>
     </div>
-
     <script>
         let phoneIp = '';
         let selectedStationName = 'Radio Paradise';
@@ -272,7 +266,6 @@
         let currentMapId = '';
         let pollInterval = null;
         let pollTimeout = null;
-
         // Fetch Phone IP from Firebase
         const urlParams = new URLSearchParams(window.location.search);
         const key = urlParams.get('key');
@@ -283,7 +276,13 @@
                 .then(ip => {
                     if (ip && ip.startsWith('http')) {
                         phoneIp = ip;
-                        document.getElementById('status').innerText = "CONNECTED";
+                        
+                        // DEBUG INFO: Check what the watch supports
+                        let motionSupport = (typeof DeviceMotionEvent !== 'undefined') ? 'Yes' : 'No';
+                        let permSupport = (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') ? 'Yes' : 'No';
+                        
+                        document.getElementById('status').innerText = "CONNECTED | Motion: " + motionSupport + " | PermReq: " + permSupport;
+                        
                         loadFavorites();
                     } else {
                         document.getElementById('status').innerText = "INVALID PHONE IP";
@@ -296,8 +295,7 @@
         } else {
             document.getElementById('status').innerText = "MISSING KEY IN URL";
         }
-
-        // Request iOS/watchOS motion permission on first tap (handles both touch and click)
+        // Request iOS/watchOS motion permission on first tap
         function triggerPermission() {
             if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
                 DeviceMotionEvent.requestPermission()
@@ -311,12 +309,10 @@
         }
         document.addEventListener('touchstart', triggerPermission, { once: true });
         document.addEventListener('click', triggerPermission, { once: true });
-
         // Wrist-shake gesture detection via Accelerometer
         let lastUpdate = 0;
         let lastX = 0, lastY = 0, lastZ = 0;
         let shakeTimeout = null;
-
         window.addEventListener('devicemotion', function(event) {
             let acc = event.accelerationIncludingGravity;
             if (!acc) return;
@@ -361,7 +357,6 @@
                 lastZ = z;
             }
         });
-
         function sendCommand(cmdText, silent = false) {
             if (!phoneIp) return;
             const statusDiv = document.getElementById('status');
@@ -391,7 +386,6 @@
                     }
                 });
         }
-
         function toggleNoteMode() {
             isNoteMode = !isNoteMode;
             var noteBtn = document.getElementById('note-btn');
@@ -411,11 +405,9 @@
             document.getElementById(tabId).style.display = 'block';
             evt.currentTarget.classList.add('active');
         }
-
         function focusMicInput() {
             document.getElementById('custom-cmd').focus();
         }
-
         function sendCustom(inputEl) {
             const val = inputEl.value.trim();
             if (val) {
@@ -431,11 +423,9 @@
                 inputEl.value = '';
             }
         }
-
         function playRadio() {
             sendCommand('play radio ' + selectedStationName);
         }
-
         function playFavorite(selectEl) {
             const stationName = selectEl.value;
             if (stationName) {
@@ -445,7 +435,6 @@
                 setTimeout(() => { selectEl.value = ""; }, 500);
             }
         }
-
         function loadFavorites() {
             if (!phoneIp) return;
             const selectEl = document.getElementById('fav-select');
@@ -470,13 +459,10 @@
                     selectEl.innerHTML = '<option value="" disabled>Load error</option>';
                 });
         }
-
         function startPolling() {
             if (pollInterval) clearInterval(pollInterval);
             if (pollTimeout) clearTimeout(pollTimeout);
-
             pollInterval = setInterval(checkMapStatus, 1500);
-
             pollTimeout = setTimeout(function() {
                 if (pollInterval) {
                     clearInterval(pollInterval);
@@ -484,7 +470,6 @@
                 }
             }, 15000);
         }
-
         function checkMapStatus() {
             if (!phoneIp) return;
             fetch(phoneIp + '/api/map-status')
@@ -512,7 +497,6 @@
                 })
                 .catch(e => {});
         }
-
         function closeMap() {
             document.getElementById('map-card').style.display = 'none';
         }
