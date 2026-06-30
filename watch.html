@@ -57,7 +57,7 @@
             fetch('https://sensorsconnect-d1f93-default-rtdb.firebaseio.com/server_ip/' + key + '.json')
                 .then(response => {
                     if (!response.ok) throw new Error("Status " + response.status);
-                    return response.text();
+                    return response.json();
                 })
                 .then(ip => {
                     if (ip && ip.startsWith('http')) {
