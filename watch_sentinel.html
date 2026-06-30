@@ -74,41 +74,36 @@
             outline: none;
             transition: transform 0.08s ease, background 0.08s ease, box-shadow 0.08s ease;
         }
+        
+        /* High-Contrast Professional Active Feedback */
         .btn.btn-pressed {
-            transform: scale(0.92);
-            background: rgba(0, 243, 255, 0.25) !important;
-            box-shadow: 0 0 18px rgba(0, 243, 255, 0.7) !important;
+            transform: scale(0.90) !important;
+            background: #00f3ff !important;
+            color: #080710 !important;
+            box-shadow: 0 0 20px #00f3ff !important;
         }
         .btn-stop.btn-pressed {
-            background: rgba(239, 68, 68, 0.35) !important;
-            box-shadow: 0 0 18px rgba(239, 68, 68, 0.7) !important;
+            background: #ef4444 !important;
+            color: #080710 !important;
+            border-color: #ef4444 !important;
+            box-shadow: 0 0 20px #ef4444 !important;
         }
         .btn-gate.btn-pressed {
-            background: rgba(16, 185, 129, 0.35) !important;
-            box-shadow: 0 0 18px rgba(16, 185, 129, 0.7) !important;
+            background: #10b981 !important;
+            color: #080710 !important;
+            border-color: #10b981 !important;
+            box-shadow: 0 0 20px #10b981 !important;
         }
-        .btn:active {
-            background: #00f3ff;
-            color: #080710;
-            transform: scale(0.95);
-        }
+        
         .btn-gate {
             border-color: #10b981;
             color: #10b981;
             background: rgba(16, 185, 129, 0.05);
         }
-        .btn-gate:active {
-            background: #10b981;
-            color: #080710;
-        }
         .btn-stop {
             border-color: #ef4444;
             color: #ef4444;
             background: rgba(239, 68, 68, 0.05);
-        }
-        .btn-stop:active {
-            background: #ef4444;
-            color: #080710;
         }
         .btn-note-active {
             background: rgba(168, 85, 247, 0.2) !important;
@@ -147,9 +142,6 @@
             box-sizing: border-box;
             -webkit-appearance: none;
             appearance: none;
-        }
-        .select-box:active {
-            background: rgba(165, 180, 252, 0.2);
         }
         .mic-container {
             margin-top: 18px;
@@ -272,7 +264,6 @@
         if (key) {
             document.getElementById('status').innerText = "CONNECTED";
             loadFavorites();
-            // Do a single check on load to see if a map is already active
             checkMapStatus();
         } else {
             document.getElementById('status').innerText = "MISSING KEY IN URL";
@@ -284,7 +275,7 @@
                 btn.addEventListener('touchstart', () => {
                     btn.classList.add('btn-pressed');
                     if (navigator.vibrate) {
-                        navigator.vibrate(15); // Short, premium haptic tap
+                        navigator.vibrate(15);
                     }
                 });
                 // Touch End
@@ -398,6 +389,15 @@
                 }
                 // Instantly check once
                 checkMapStatus();
+                
+                // Self-Deleting Command: Erase this message 5 seconds later to keep Firebase empty!
+                if (data && data.name) {
+                    setTimeout(() => {
+                        fetch('https://sensorsconnect-d1f93-default-rtdb.firebaseio.com/sentinel_watch/' + data.name + '.json', {
+                            method: 'DELETE'
+                        }).catch(e => console.error("Clean up failed", e));
+                    }, 5000);
+                }
             })
             .catch(err => {
                 if (!silent) {
@@ -444,6 +444,8 @@
                 inputEl.value = '';
             }
         }
+        // Initialize button active states (re-bind dynamically if needed)
+        setTimeout(setupButtonFeedback, 500);
         function playRadio() {
             sendCommand('play radio ' + selectedStationName);
         }
