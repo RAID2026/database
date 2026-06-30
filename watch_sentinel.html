@@ -372,9 +372,9 @@
             
             // Start battery-optimized smart polling
             startPolling();
-            // Route the command securely through Firebase (HTTPS)
-            fetch('https://sensorsconnect-d1f93-default-rtdb.firebaseio.com/sentinel_watch.json', {
-                method: 'POST',
+            // Overwrite the single "latest" command node in Firebase (PUT request)
+            fetch('https://sensorsconnect-d1f93-default-rtdb.firebaseio.com/sentinel_watch/latest.json', {
+                method: 'PUT',
                 body: JSON.stringify({
                     sender: "AppleWatch_Web",
                     message: cmdText,
@@ -389,15 +389,6 @@
                 }
                 // Instantly check once
                 checkMapStatus();
-                
-                // Self-Deleting Command: Erase this message 5 seconds later to keep Firebase empty!
-                if (data && data.name) {
-                    setTimeout(() => {
-                        fetch('https://sensorsconnect-d1f93-default-rtdb.firebaseio.com/sentinel_watch/' + data.name + '.json', {
-                            method: 'DELETE'
-                        }).catch(e => console.error("Clean up failed", e));
-                    }, 5000);
-                }
             })
             .catch(err => {
                 if (!silent) {
@@ -420,6 +411,8 @@
             }
         }
         
+        // Helper to delay setup of button active states if elements are not fully loaded
+        setTimeout(setupButtonFeedback, 500);
         function openTab(evt, tabId) {
             document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
             document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
@@ -444,8 +437,6 @@
                 inputEl.value = '';
             }
         }
-        // Initialize button active states (re-bind dynamically if needed)
-        setTimeout(setupButtonFeedback, 500);
         function playRadio() {
             sendCommand('play radio ' + selectedStationName);
         }
@@ -458,6 +449,8 @@
                 setTimeout(() => { selectEl.value = ""; }, 500);
             }
         }
+        // Initialize button active states
+        setupButtonFeedback();
         function loadFavorites() {
             const selectEl = document.getElementById('fav-select');
             selectEl.innerHTML = '<option value="" disabled selected>Loading...</option>';
