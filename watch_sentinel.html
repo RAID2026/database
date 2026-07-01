@@ -585,7 +585,7 @@
                         btnWatch.style.color = '#c084fc';
                         btnWatch.style.background = 'rgba(192, 132, 252, 0.05)';
                         btnWatch.innerText = '⌚ WATCH';
-                        btnWatch.href = ep.videoUrl;
+                        btnWatch.href = ep.videoUrl.replace("https://", "http://");
                         btnWatch.target = '_blank';
                         
                         btnRow.appendChild(btnPhone);
