@@ -2,6 +2,9 @@
 <html>
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>Sentinel Watch Remote</title>
     <style>
         html, body {
@@ -604,8 +607,21 @@
             const player = document.getElementById('watch-video-player');
             const titleSpan = document.getElementById('video-overlay-title');
             
-            titleSpan.innerText = title;
+            titleSpan.innerText = "Loading: " + title;
+            titleSpan.style.color = "#a5b4fc";
             overlay.style.display = 'flex';
+            
+            player.onerror = () => {
+                const err = player.error;
+                titleSpan.innerText = "Error " + (err ? err.code : "unknown") + " (Codec/Size)";
+                titleSpan.style.color = "#ef4444";
+            };
+            
+            player.onplaying = () => {
+                titleSpan.innerText = title;
+                titleSpan.style.color = "#00f3ff";
+            };
+            
             player.src = url;
             player.load();
             player.play().catch(err => {
