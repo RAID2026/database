@@ -199,6 +199,7 @@
             <button class="tab-btn active" onclick="openTab(event, 'tab-ir')">IR</button>
             <button class="tab-btn" onclick="openTab(event, 'tab-radio')">Radio</button>
             <button class="tab-btn" onclick="openTab(event, 'tab-gate')">Gate</button>
+            <button class="tab-btn" onclick="openTab(event, 'tab-podcasts'); loadPodcasts();">Podcasts</button>
         </div>
         <!-- Tab 1: IR Remote -->
         <div id="tab-ir" class="tab-content">
@@ -239,6 +240,13 @@
                 <button class="btn" onclick="sendCommand('sync open')" style="font-size:11px;">🔄 SYNC OPEN</button>
                 <button class="btn" onclick="sendCommand('sync closed')" style="font-size:11px;">🔄 SYNC CLOSE</button>
             </div>
+        </div>
+        <!-- Tab 4: Podcasts Controller -->
+        <div id="tab-podcasts" class="tab-content" style="display:none;">
+            <div id="podcast-list" style="max-height: 180px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; padding: 4px; box-sizing: border-box;">
+                <div style="font-size:12px;color:#64748b;">No podcasts loaded.</div>
+            </div>
+            <button class="btn btn-stop" onclick="sendCommand('stop')" style="margin-top: 8px;">⏹️ STOP PODCAST</button>
         </div>
         <!-- Dictation Microphone Input & Stop Assistant -->
         <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 18px;">
@@ -521,10 +529,109 @@
                 })
                 .catch(e => {});
         }
+        function loadPodcasts() {
+            const container = document.getElementById('podcast-list');
+            container.innerHTML = '<div style="font-size:12px;color:#64748b;">Loading podcasts...</div>';
+            
+            fetch('https://sensorsconnect-d1f93-default-rtdb.firebaseio.com/watch_podcasts.json')
+                .then(r => r.json())
+                .then(data => {
+                    container.innerHTML = '';
+                    if (!data || data.length === 0) {
+                        container.innerHTML = '<div style="font-size:12px;color:#64748b;">No podcasts synced. Open app on phone to sync.</div>';
+                        return;
+                    }
+                    data.forEach(ep => {
+                        if (!ep) return;
+                        
+                        const itemDiv = document.createElement('div');
+                        itemDiv.style.borderBottom = '1px dashed rgba(0, 243, 255, 0.2)';
+                        itemDiv.style.padding = '8px 0';
+                        itemDiv.style.textAlign = 'left';
+                        
+                        const titleSpan = document.createElement('div');
+                        titleSpan.style.fontSize = '12px';
+                        titleSpan.style.fontWeight = 'bold';
+                        titleSpan.style.color = '#a5b4fc';
+                        titleSpan.style.marginBottom = '6px';
+                        titleSpan.innerText = ep.title;
+                        
+                        const btnRow = document.createElement('div');
+                        btnRow.style.display = 'grid';
+                        btnRow.style.gridTemplateColumns = '1fr 1fr';
+                        btnRow.style.gap = '6px';
+                        
+                        const btnPhone = document.createElement('button');
+                        btnPhone.className = 'btn';
+                        btnPhone.style.padding = '8px 0';
+                        btnPhone.style.margin = '0';
+                        btnPhone.style.fontSize = '12px';
+                        btnPhone.innerText = '📱 PHONE';
+                        btnPhone.onclick = () => {
+                            sendCommand('play podcast: ' + ep.videoUrl + ' | ' + ep.title);
+                        };
+                        
+                        const btnWatch = document.createElement('button');
+                        btnWatch.className = 'btn';
+                        btnWatch.style.padding = '8px 0';
+                        btnWatch.style.margin = '0';
+                        btnWatch.style.fontSize = '12px';
+                        btnWatch.style.borderColor = '#c084fc';
+                        btnWatch.style.color = '#c084fc';
+                        btnWatch.style.background = 'rgba(192, 132, 252, 0.05)';
+                        btnWatch.innerText = '⌚ WATCH';
+                        btnWatch.onclick = () => {
+                            playVideoOnWatch(ep.videoUrl, ep.title);
+                        };
+                        
+                        btnRow.appendChild(btnPhone);
+                        btnRow.appendChild(btnWatch);
+                        
+                        itemDiv.appendChild(titleSpan);
+                        itemDiv.appendChild(btnRow);
+                        
+                        container.appendChild(itemDiv);
+                    });
+                    
+                    setupButtonFeedback();
+                })
+                .catch(err => {
+                    container.innerHTML = '<div style="font-size:12px;color:#ef4444;">Failed to load</div>';
+                });
+        }
+        function playVideoOnWatch(url, title) {
+            const overlay = document.getElementById('video-overlay');
+            const player = document.getElementById('watch-video-player');
+            const titleSpan = document.getElementById('video-overlay-title');
+            
+            titleSpan.innerText = title;
+            overlay.style.display = 'flex';
+            player.src = url;
+            player.load();
+            player.play().catch(err => {
+                console.error("Autoplay failed on watch:", err);
+            });
+        }
+        function closeWatchVideo() {
+            const overlay = document.getElementById('video-overlay');
+            const player = document.getElementById('watch-video-player');
+            
+            player.pause();
+            player.src = '';
+            overlay.style.display = 'none';
+        }
         function closeMap() {
             document.getElementById('map-card').style.display = 'none';
         }
     </script>
+    <!-- Watch Video Player Overlay -->
+    <div id="video-overlay" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:#080710; z-index:9999; flex-direction:column; justify-content:center; align-items:center; box-sizing:border-box;">
+        <div style="display:flex; justify-content:space-between; align-items:center; width:100%; padding:4px 8px; background:rgba(0,0,0,0.4); box-sizing:border-box;">
+            <span id="video-overlay-title" style="font-size:10px; font-weight:bold; color:#00f3ff; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:75%; text-align:left;">Playing...</span>
+            <button onclick="closeWatchVideo()" style="background:none; border:none; color:#ef4444; font-size:16px; font-weight:bold; padding:0 4px; cursor:pointer;">✕</button>
+        </div>
+        <video id="watch-video-player" controls style="width:100%; height:calc(100vh - 35px); background:black;" playsinline></video>
+    </div>
 </body>
 </html>
 
