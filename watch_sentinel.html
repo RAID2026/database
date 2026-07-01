@@ -574,8 +574,10 @@
                             sendCommand('play podcast: ' + ep.videoUrl + ' | ' + ep.title);
                         };
                         
-                        const btnWatch = document.createElement('button');
+                        const btnWatch = document.createElement('a');
                         btnWatch.className = 'btn';
+                        btnWatch.style.display = 'block';
+                        btnWatch.style.textDecoration = 'none';
                         btnWatch.style.padding = '8px 0';
                         btnWatch.style.margin = '0';
                         btnWatch.style.fontSize = '12px';
@@ -583,9 +585,8 @@
                         btnWatch.style.color = '#c084fc';
                         btnWatch.style.background = 'rgba(192, 132, 252, 0.05)';
                         btnWatch.innerText = '⌚ WATCH';
-                        btnWatch.onclick = () => {
-                            playVideoOnWatch(ep.videoUrl, ep.title);
-                        };
+                        btnWatch.href = ep.videoUrl;
+                        btnWatch.target = '_blank';
                         
                         btnRow.appendChild(btnPhone);
                         btnRow.appendChild(btnWatch);
@@ -602,52 +603,10 @@
                     container.innerHTML = '<div style="font-size:12px;color:#ef4444;">Failed to load</div>';
                 });
         }
-        function playVideoOnWatch(url, title) {
-            const overlay = document.getElementById('video-overlay');
-            const player = document.getElementById('watch-video-player');
-            const titleSpan = document.getElementById('video-overlay-title');
-            
-            titleSpan.innerText = "Loading: " + title;
-            titleSpan.style.color = "#a5b4fc";
-            overlay.style.display = 'flex';
-            
-            player.onerror = () => {
-                const err = player.error;
-                titleSpan.innerText = "Error " + (err ? err.code : "unknown") + " (Codec/Size)";
-                titleSpan.style.color = "#ef4444";
-            };
-            
-            player.onplaying = () => {
-                titleSpan.innerText = title;
-                titleSpan.style.color = "#00f3ff";
-            };
-            
-            player.src = url;
-            player.load();
-            player.play().catch(err => {
-                console.error("Autoplay failed on watch:", err);
-            });
-        }
-        function closeWatchVideo() {
-            const overlay = document.getElementById('video-overlay');
-            const player = document.getElementById('watch-video-player');
-            
-            player.pause();
-            player.src = '';
-            overlay.style.display = 'none';
-        }
         function closeMap() {
             document.getElementById('map-card').style.display = 'none';
         }
     </script>
-    <!-- Watch Video Player Overlay -->
-    <div id="video-overlay" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:#080710; z-index:9999; flex-direction:column; justify-content:center; align-items:center; box-sizing:border-box;">
-        <div style="display:flex; justify-content:space-between; align-items:center; width:100%; padding:4px 8px; background:rgba(0,0,0,0.4); box-sizing:border-box;">
-            <span id="video-overlay-title" style="font-size:10px; font-weight:bold; color:#00f3ff; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:75%; text-align:left;">Playing...</span>
-            <button onclick="closeWatchVideo()" style="background:none; border:none; color:#ef4444; font-size:16px; font-weight:bold; padding:0 4px; cursor:pointer;">✕</button>
-        </div>
-        <video id="watch-video-player" controls style="width:100%; height:calc(100vh - 35px); background:black;" playsinline></video>
-    </div>
 </body>
 </html>
 
