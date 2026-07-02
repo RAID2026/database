@@ -204,6 +204,7 @@
             <button class="tab-btn" onclick="openTab(event, 'tab-gate')">Gate</button>
             <button class="tab-btn" onclick="openTab(event, 'tab-podcasts'); loadPodcasts();">Podcasts</button>
         </div>
+
         <!-- Tab 1: IR Remote -->
         <div id="tab-ir" class="tab-content">
             <div class="grid-2">
@@ -215,6 +216,7 @@
                 <button class="btn btn-stop" onclick="sendCommand('stop')">⏹️ STOP</button>
             </div>
         </div>
+
         <!-- Tab 2: Radio Control -->
         <div id="tab-radio" class="tab-content" style="display:none;">
             <button id="play-btn" class="btn" onclick="playRadio()" style="margin-bottom: 4px;">📻 PLAY RADIO</button>
@@ -232,6 +234,7 @@
                 </select>
             </div>
         </div>
+
         <!-- Tab 3: Gate Controller -->
         <div id="tab-gate" class="tab-content" style="display:none;">
             <div class="grid-2">
@@ -244,6 +247,7 @@
                 <button class="btn" onclick="sendCommand('sync closed')" style="font-size:11px;">🔄 SYNC CLOSE</button>
             </div>
         </div>
+
         <!-- Tab 4: Podcasts Controller -->
         <div id="tab-podcasts" class="tab-content" style="display:none;">
             <div id="podcast-list" style="max-height: 180px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; padding: 4px; box-sizing: border-box;">
@@ -251,6 +255,7 @@
             </div>
             <button class="btn btn-stop" onclick="sendCommand('stop')" style="margin-top: 8px;">⏹️ STOP PODCAST</button>
         </div>
+
         <!-- Dictation Microphone Input & Stop Assistant -->
         <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 18px;">
             <div class="mic-container" onclick="focusMicInput()" style="margin-top: 0; display: flex; align-items: center; justify-content: center; gap: 10px; padding: 16px 10px; cursor: pointer;">
@@ -260,14 +265,48 @@
             <button id="note-btn" class="btn" onclick="toggleNoteMode()" style="margin: 0; font-size: 20px; padding: 16px 10px;">📝</button>
             <button class="btn btn-stop" onclick="sendCommand('stop assistant')" style="margin: 0; font-size: 24px; padding: 16px 10px;">🛑</button>
         </div>
+
         <div id="status">CONNECTING...</div>
     </div>
+
     <script>
+        let firebaseToken = localStorage.getItem('firebaseToken') || '';
+        let tokenExpiry = parseInt(localStorage.getItem('tokenExpiry') || '0');
+
+        function getFirebaseToken() {
+            const now = Date.now();
+            if (firebaseToken && now < tokenExpiry) {
+                return Promise.resolve(firebaseToken);
+            }
+            const url = "https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=AIzaSyACVsHOu35x7wRwIJFZob04ooMBL5S7OAk";
+            return fetch(url, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ returnSecureToken: true })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.idToken) {
+                    firebaseToken = data.idToken;
+                    tokenExpiry = Date.now() + 3000000; // 50 minutes
+                    localStorage.setItem('firebaseToken', firebaseToken);
+                    localStorage.setItem('tokenExpiry', tokenExpiry.toString());
+                    return firebaseToken;
+                }
+                throw new Error("No token");
+            })
+            .catch(err => {
+                console.error("Firebase auth failed:", err);
+                return '';
+            });
+        }
+
         let selectedStationName = 'Radio Paradise';
         let isNoteMode = false;
         let currentMapId = '';
         let pollInterval = null;
         let pollTimeout = null;
+
         // Fetch Phone Key from URL
         const urlParams = new URLSearchParams(window.location.search);
         const key = urlParams.get('key');
@@ -279,6 +318,7 @@
         } else {
             document.getElementById('status').innerText = "MISSING KEY IN URL";
         }
+
         // Setup visual and haptic feedback on all buttons
         function setupButtonFeedback() {
             document.querySelectorAll('.btn').forEach(btn => {
@@ -296,6 +336,7 @@
                 btn.addEventListener('touchcancel', () => {
                     btn.classList.remove('btn-pressed');
                 });
+
                 // Mouse Fallback (Laptop/Desktop testing)
                 btn.addEventListener('mousedown', () => {
                     btn.classList.add('btn-pressed');
@@ -311,6 +352,7 @@
         
         // Initialize button feedback
         setupButtonFeedback();
+
         // Request iOS/watchOS motion permission on first tap
         function triggerPermission() {
             if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
@@ -325,10 +367,12 @@
         }
         document.addEventListener('touchstart', triggerPermission, { once: true });
         document.addEventListener('click', triggerPermission, { once: true });
+
         // Wrist-shake gesture detection via Accelerometer
         let lastUpdate = 0;
         let lastX = 0, lastY = 0, lastZ = 0;
         let shakeTimeout = null;
+
         window.addEventListener('devicemotion', function(event) {
             let acc = event.accelerationIncludingGravity;
             if (!acc) return;
@@ -373,6 +417,7 @@
                 lastZ = z;
             }
         });
+
         function sendCommand(cmdText, silent = false) {
             if (!key) return;
             const statusDiv = document.getElementById('status');
@@ -383,32 +428,37 @@
             
             // Start battery-optimized smart polling
             startPolling();
-            // Overwrite the single "latest" command node in Firebase (PUT request)
-            fetch('https://sensorsconnect-d1f93-default-rtdb.firebaseio.com/sentinel_watch/latest.json', {
-                method: 'PUT',
-                body: JSON.stringify({
-                    sender: "AppleWatch_Web",
-                    message: cmdText,
-                    timestamp: Date.now()
+
+            getFirebaseToken().then(token => {
+                const url = 'https://sensorsconnect-d1f93-default-rtdb.firebaseio.com/sentinel_watch/latest.json' + (token ? '?auth=' + token : '');
+                // Overwrite the single "latest" command node in Firebase (PUT request)
+                fetch(url, {
+                    method: 'PUT',
+                    body: JSON.stringify({
+                        sender: "AppleWatch_Web",
+                        message: cmdText,
+                        timestamp: Date.now()
+                    })
                 })
-            })
-            .then(r => r.json())
-            .then(data => {
-                if (!silent) {
-                    statusDiv.innerText = "SENT: " + cmdText.toUpperCase();
-                    statusDiv.style.color = "#10b981";
-                }
-                // Instantly check once
-                checkMapStatus();
-            })
-            .catch(err => {
-                if (!silent) {
-                    statusDiv.innerText = "OFFLINE";
-                    statusDiv.style.color = "#ef4444";
-                }
-                console.error("Firebase write error:", err);
+                .then(r => r.json())
+                .then(data => {
+                    if (!silent) {
+                        statusDiv.innerText = "SENT: " + cmdText.toUpperCase();
+                        statusDiv.style.color = "#10b981";
+                    }
+                    // Instantly check once
+                    checkMapStatus();
+                })
+                .catch(err => {
+                    if (!silent) {
+                        statusDiv.innerText = "OFFLINE";
+                        statusDiv.style.color = "#ef4444";
+                    }
+                    console.error("Firebase write error:", err);
+                });
             });
         }
+
         function toggleNoteMode() {
             isNoteMode = !isNoteMode;
             var noteBtn = document.getElementById('note-btn');
@@ -424,15 +474,18 @@
         
         // Helper to delay setup of button active states if elements are not fully loaded
         setTimeout(setupButtonFeedback, 500);
+
         function openTab(evt, tabId) {
             document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
             document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
             document.getElementById(tabId).style.display = 'block';
             evt.currentTarget.classList.add('active');
         }
+
         function focusMicInput() {
             document.getElementById('custom-cmd').focus();
         }
+
         function sendCustom(inputEl) {
             const val = inputEl.value.trim();
             if (val) {
@@ -448,9 +501,11 @@
                 inputEl.value = '';
             }
         }
+
         function playRadio() {
             sendCommand('play radio ' + selectedStationName);
         }
+
         function playFavorite(selectEl) {
             const stationName = selectEl.value;
             if (stationName) {
@@ -460,44 +515,53 @@
                 setTimeout(() => { selectEl.value = ""; }, 500);
             }
         }
+
         // Initialize button active states
         setupButtonFeedback();
+
         function loadFavorites() {
             const selectEl = document.getElementById('fav-select');
             selectEl.innerHTML = '<option value="" disabled selected>Loading...</option>';
             
-            // Read favorites securely from Firebase (HTTPS)
-            fetch('https://sensorsconnect-d1f93-default-rtdb.firebaseio.com/radio_favorites.json')
-                .then(r => r.json())
-                .then(dataStr => {
-                    const data = JSON.parse(dataStr || '[]');
-                    selectEl.innerHTML = '<option value="" disabled selected>⭐ Select Favorite...</option>';
-                    if (!data || data.length === 0) {
-                        selectEl.innerHTML = '<option value="" disabled>No favorites on phone</option>';
-                        return;
-                    }
-                    data.forEach(station => {
-                        const opt = document.createElement('option');
-                        opt.value = station.name;
-                        opt.innerText = station.name;
-                        selectEl.appendChild(opt);
+            getFirebaseToken().then(token => {
+                const url = 'https://sensorsconnect-d1f93-default-rtdb.firebaseio.com/radio_favorites.json' + (token ? '?auth=' + token : '');
+                // Read favorites securely from Firebase (HTTPS)
+                fetch(url)
+                    .then(r => r.json())
+                    .then(dataStr => {
+                        const data = JSON.parse(dataStr || '[]');
+                        selectEl.innerHTML = '<option value="" disabled selected>⭐ Select Favorite...</option>';
+                        if (!data || data.length === 0) {
+                            selectEl.innerHTML = '<option value="" disabled>No favorites on phone</option>';
+                            return;
+                        }
+                        data.forEach(station => {
+                            const opt = document.createElement('option');
+                            opt.value = station.name;
+                            opt.innerText = station.name;
+                            selectEl.appendChild(opt);
+                        });
+                    })
+                    .catch(err => {
+                        selectEl.innerHTML = '<option value="" disabled>Load error</option>';
+                        console.error("Failed to load favorites from Firebase:", err);
                     });
-                })
-                .catch(err => {
-                    selectEl.innerHTML = '<option value="" disabled>Load error</option>';
-                    console.error("Failed to load favorites from Firebase:", err);
-                });
+            });
         }
+
         function startPolling() {
             if (pollInterval) clearInterval(pollInterval);
             if (pollTimeout) clearTimeout(pollTimeout);
+
             // Poll every 2 seconds
             pollInterval = setInterval(checkMapStatus, 2000);
+
             // Safety timeout: stop polling after 20 seconds to save battery
             pollTimeout = setTimeout(function() {
                 stopPolling();
             }, 20000);
         }
+
         function stopPolling() {
             if (pollInterval) {
                 clearInterval(pollInterval);
@@ -508,105 +572,117 @@
                 pollTimeout = null;
             }
         }
+
         function checkMapStatus() {
-            // Read map/picture status securely from Firebase (HTTPS)
-            fetch('https://sensorsconnect-d1f93-default-rtdb.firebaseio.com/map_status.json')
-                .then(r => r.json())
-                .then(data => {
-                    if (data && data.mapId && data.mapId !== currentMapId) {
-                        currentMapId = data.mapId;
-                        document.getElementById('map-img').src = data.image; // Base64 Data URL!
-                        document.getElementById('map-card').style.display = 'block';
-                        
-                        if (data.title) {
-                            document.getElementById('map-title').innerText = data.title.toUpperCase();
-                            if (data.title.toUpperCase().indexOf("PICTURE") !== -1) {
-                                document.getElementById('map-zoom-controls').style.display = 'none';
-                            } else {
-                                document.getElementById('map-zoom-controls').style.display = 'grid';
+            getFirebaseToken().then(token => {
+                const url = 'https://sensorsconnect-d1f93-default-rtdb.firebaseio.com/map_status.json' + (token ? '?auth=' + token : '');
+                // Read map/picture status securely from Firebase (HTTPS)
+                fetch(url)
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data && data.mapId && data.mapId !== currentMapId) {
+                            currentMapId = data.mapId;
+                            document.getElementById('map-img').src = data.image; // Base64 Data URL!
+                            document.getElementById('map-card').style.display = 'block';
+                            
+                            if (data.title) {
+                                document.getElementById('map-title').innerText = data.title.toUpperCase();
+                                if (data.title.toUpperCase().indexOf("PICTURE") !== -1) {
+                                    document.getElementById('map-zoom-controls').style.display = 'none';
+                                } else {
+                                    document.getElementById('map-zoom-controls').style.display = 'grid';
+                                }
                             }
+
+                            // SUCCESS: We received the new image, stop polling immediately to save battery!
+                            stopPolling();
                         }
-                        // SUCCESS: We received the new image, stop polling immediately to save battery!
-                        stopPolling();
-                    }
-                })
-                .catch(e => {});
+                    })
+                    .catch(e => {});
+            });
         }
+
         function loadPodcasts() {
             const container = document.getElementById('podcast-list');
             container.innerHTML = '<div style="font-size:12px;color:#64748b;">Loading podcasts...</div>';
             
-            fetch('https://sensorsconnect-d1f93-default-rtdb.firebaseio.com/watch_podcasts.json')
-                .then(r => r.json())
-                .then(data => {
-                    container.innerHTML = '';
-                    if (!data || data.length === 0) {
-                        container.innerHTML = '<div style="font-size:12px;color:#64748b;">No podcasts synced. Open app on phone to sync.</div>';
-                        return;
-                    }
-                    data.forEach(ep => {
-                        if (!ep) return;
+            getFirebaseToken().then(token => {
+                const url = 'https://sensorsconnect-d1f93-default-rtdb.firebaseio.com/watch_podcasts.json' + (token ? '?auth=' + token : '');
+                fetch(url)
+                    .then(r => r.json())
+                    .then(data => {
+                        container.innerHTML = '';
+                        if (!data || data.length === 0) {
+                            container.innerHTML = '<div style="font-size:12px;color:#64748b;">No podcasts synced. Open app on phone to sync.</div>';
+                            return;
+                        }
+                        data.forEach(ep => {
+                            if (!ep) return;
+                            
+                            const itemDiv = document.createElement('div');
+                            itemDiv.style.borderBottom = '1px dashed rgba(0, 243, 255, 0.2)';
+                            itemDiv.style.padding = '8px 0';
+                            itemDiv.style.textAlign = 'left';
+                            
+                            const titleSpan = document.createElement('div');
+                            titleSpan.style.fontSize = '12px';
+                            titleSpan.style.fontWeight = 'bold';
+                            titleSpan.style.color = '#a5b4fc';
+                            titleSpan.style.marginBottom = '6px';
+                            titleSpan.innerText = ep.title;
+                            
+                            const btnRow = document.createElement('div');
+                            btnRow.style.display = 'grid';
+                            btnRow.style.gridTemplateColumns = '1fr 1fr';
+                            btnRow.style.gap = '6px';
+                            
+                            const btnPhone = document.createElement('button');
+                            btnPhone.className = 'btn';
+                            btnPhone.style.padding = '8px 0';
+                            btnPhone.style.margin = '0';
+                            btnPhone.style.fontSize = '12px';
+                            btnPhone.innerText = '📱 PHONE';
+                            btnPhone.onclick = () => {
+                                sendCommand('play podcast: ' + ep.videoUrl + ' | ' + ep.title);
+                            };
+                            
+                            const btnWatch = document.createElement('a');
+                            btnWatch.className = 'btn';
+                            btnWatch.style.display = 'block';
+                            btnWatch.style.textDecoration = 'none';
+                            btnWatch.style.padding = '8px 0';
+                            btnWatch.style.margin = '0';
+                            btnWatch.style.fontSize = '12px';
+                            btnWatch.style.borderColor = '#c084fc';
+                            btnWatch.style.color = '#c084fc';
+                            btnWatch.style.background = 'rgba(192, 132, 252, 0.05)';
+                            btnWatch.innerText = '⌚ WATCH';
+                            btnWatch.href = ep.videoUrl;
+                            btnWatch.target = '_blank';
+                            
+                            btnRow.appendChild(btnPhone);
+                            btnRow.appendChild(btnWatch);
+                            
+                            itemDiv.appendChild(titleSpan);
+                            itemDiv.appendChild(btnRow);
+                            
+                            container.appendChild(itemDiv);
+                        });
                         
-                        const itemDiv = document.createElement('div');
-                        itemDiv.style.borderBottom = '1px dashed rgba(0, 243, 255, 0.2)';
-                        itemDiv.style.padding = '8px 0';
-                        itemDiv.style.textAlign = 'left';
-                        
-                        const titleSpan = document.createElement('div');
-                        titleSpan.style.fontSize = '12px';
-                        titleSpan.style.fontWeight = 'bold';
-                        titleSpan.style.color = '#a5b4fc';
-                        titleSpan.style.marginBottom = '6px';
-                        titleSpan.innerText = ep.title;
-                        
-                        const btnRow = document.createElement('div');
-                        btnRow.style.display = 'grid';
-                        btnRow.style.gridTemplateColumns = '1fr 1fr';
-                        btnRow.style.gap = '6px';
-                        
-                        const btnPhone = document.createElement('button');
-                        btnPhone.className = 'btn';
-                        btnPhone.style.padding = '8px 0';
-                        btnPhone.style.margin = '0';
-                        btnPhone.style.fontSize = '12px';
-                        btnPhone.innerText = '📱 PHONE';
-                        btnPhone.onclick = () => {
-                            sendCommand('play podcast: ' + ep.videoUrl + ' | ' + ep.title);
-                        };
-                        
-                        const btnWatch = document.createElement('a');
-                        btnWatch.className = 'btn';
-                        btnWatch.style.display = 'block';
-                        btnWatch.style.textDecoration = 'none';
-                        btnWatch.style.padding = '8px 0';
-                        btnWatch.style.margin = '0';
-                        btnWatch.style.fontSize = '12px';
-                        btnWatch.style.borderColor = '#c084fc';
-                        btnWatch.style.color = '#c084fc';
-                        btnWatch.style.background = 'rgba(192, 132, 252, 0.05)';
-                        btnWatch.innerText = '⌚ WATCH';
-                        btnWatch.href = ep.videoUrl;
-                        btnWatch.target = '_blank';
-                        
-                        btnRow.appendChild(btnPhone);
-                        btnRow.appendChild(btnWatch);
-                        
-                        itemDiv.appendChild(titleSpan);
-                        itemDiv.appendChild(btnRow);
-                        
-                        container.appendChild(itemDiv);
+                        setupButtonFeedback();
+                    })
+                    .catch(err => {
+                        container.innerHTML = '<div style="font-size:12px;color:#ef4444;">Failed to load</div>';
                     });
-                    
-                    setupButtonFeedback();
-                })
-                .catch(err => {
-                    container.innerHTML = '<div style="font-size:12px;color:#ef4444;">Failed to load</div>';
-                });
+            });
         }
+
         function closeMap() {
             document.getElementById('map-card').style.display = 'none';
         }
     </script>
+
 </body>
 </html>
+
 
